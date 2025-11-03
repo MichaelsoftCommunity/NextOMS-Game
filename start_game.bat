@@ -1,0 +1,3 @@
+@echo off
+echo 正在启动架空世界地图模拟器...
+start "" "index.html"
