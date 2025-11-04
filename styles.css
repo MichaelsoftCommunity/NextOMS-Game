@@ -156,6 +156,33 @@ button:active {
     border-left: 3px solid #2ecc71;
 }
 
+/* 自然灾害通知样式 */
+.disaster-notification {
+    background-color: rgba(230, 126, 34, 0.3);
+    border-left: 3px solid #e67e22;
+    animation: pulse 1s ease-in-out;
+}
+
+/* 随机事件通知样式 */
+.event-notification {
+    background-color: rgba(155, 89, 182, 0.3);
+    border-left: 3px solid #9b59b6;
+    animation: glow 1s ease-in-out;
+}
+
+/* 动画效果 */
+@keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+}
+
+@keyframes glow {
+    0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.7); }
+    70% { box-shadow: 0 0 0 5px rgba(155, 89, 182, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0); }
+}
+
 /* 外交行动按钮 */
 .diplomatic-actions {
     margin-top: 15px;
@@ -223,37 +250,48 @@ th {
     background-color: #c0392b;
 }
 
-/* 模态框 */
+/* 模态框样式 */
 .modal {
     display: none;
     position: fixed;
-    z-index: 100;
+    z-index: 1001;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
 }
 
 .modal-content {
-    background-color: #f4f4f4;
-    margin: 10% auto;
+    background-color: #fefefe;
+    margin: 15% auto;
     padding: 20px;
-    width: 50%;
-    max-width: 500px;
-    border-radius: 5px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    color: #333;
-    position: relative;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 600px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
 .close {
-    position: absolute;
-    right: 20px;
-    top: 10px;
+    color: #aaa;
+    float: right;
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
+}
+
+.close:hover, .close:focus {
+    color: black;
+    text-decoration: none;
+}
+
+.no-saves {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 20px;
 }
 
 /* 表单样式 */
