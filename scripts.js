@@ -25,6 +25,228 @@ const game = {
         DESERT: { name: '沙漠', color: '#f1c40f', fertility: 0.1, habitability: 0.2 },
         FOREST: { name: '森林', color: '#27ae60', fertility: 0.7, habitability: 0.6 }
     },
+    // 保存槽位
+    saveSlots: [],
+    currentSaveSlot: null,
+    // 自然灾害系统
+    naturalDisasters: {
+        types: [
+            {
+                name: '地震',
+                probability: 0.05,
+                effects: (nation, severity) => {
+                    // 人口损失
+                    const populationLoss = nation.population * 0.02 * severity;
+                    nation.population -= populationLoss;
+                    
+                    // 资源损失
+                    nation.resources.minerals -= 10 * severity;
+                    nation.resources.gold -= 50 * severity;
+                    
+                    // 稳定度下降
+                    nation.stability -= 0.05 * severity;
+                    
+                    return {
+                        message: `发生${severity > 1 ? '严重' : '轻微'}地震，造成${populationLoss.toFixed(1)}百万人口死亡，损失矿物资源和基础设施。`,
+                        populationLoss: populationLoss,
+                        resourceLoss: { minerals: 10 * severity, gold: 50 * severity },
+                        stabilityLoss: 0.05 * severity
+                    };
+                }
+            },
+            {
+                name: '洪水',
+                probability: 0.08,
+                effects: (nation, severity) => {
+                    // 人口损失
+                    const populationLoss = nation.population * 0.01 * severity;
+                    nation.population -= populationLoss;
+                    
+                    // 食物减产
+                    nation.resources.food -= 20 * severity;
+                    
+                    // 稳定度下降
+                    nation.stability -= 0.03 * severity;
+                    
+                    return {
+                        message: `发生${severity > 1 ? '严重' : '轻微'}洪水，淹没农田，造成${populationLoss.toFixed(1)}百万人口死亡，食物减产。`,
+                        populationLoss: populationLoss,
+                        resourceLoss: { food: 20 * severity },
+                        stabilityLoss: 0.03 * severity
+                    };
+                }
+            },
+            {
+                name: '干旱',
+                probability: 0.06,
+                effects: (nation, severity) => {
+                    // 食物严重减产
+                    nation.resources.food -= 30 * severity;
+                    
+                    // 稳定度大幅下降
+                    nation.stability -= 0.08 * severity;
+                    
+                    return {
+                        message: `发生${severity > 1 ? '严重' : '轻微'}干旱，粮食产量大幅下降，民众生活困难。`,
+                        resourceLoss: { food: 30 * severity },
+                        stabilityLoss: 0.08 * severity
+                    };
+                }
+            },
+            {
+                name: '瘟疫',
+                probability: 0.04,
+                effects: (nation, severity) => {
+                    // 人口大量损失
+                    const populationLoss = nation.population * 0.04 * severity;
+                    nation.population -= populationLoss;
+                    
+                    // 稳定度急剧下降
+                    nation.stability -= 0.1 * severity;
+                    
+                    return {
+                        message: `爆发${severity > 1 ? '严重' : '轻微'}瘟疫，造成${populationLoss.toFixed(1)}百万人口死亡，社会动荡不安。`,
+                        populationLoss: populationLoss,
+                        stabilityLoss: 0.1 * severity
+                    };
+                }
+            },
+            {
+                name: '火灾',
+                probability: 0.07,
+                effects: (nation, severity) => {
+                    // 资源损失
+                    nation.resources.minerals -= 15 * severity;
+                    nation.resources.gold -= 30 * severity;
+                    
+                    // 稳定度下降
+                    nation.stability -= 0.04 * severity;
+                    
+                    return {
+                        message: `发生${severity > 1 ? '严重' : '轻微'}火灾，烧毁基础设施和仓库，造成资源损失。`,
+                        resourceLoss: { minerals: 15 * severity, gold: 30 * severity },
+                        stabilityLoss: 0.04 * severity
+                    };
+                }
+            }
+        ]
+    },
+    // 随机事件系统
+    randomEvents: {
+        types: [
+            {
+                name: '技术突破',
+                probability: 0.05,
+                effects: (nation) => {
+                    // 技术提升
+                    nation.resources.technology += 1;
+                    
+                    // 稳定度小幅提升
+                    nation.stability += 0.02;
+                    
+                    return {
+                        message: `科学家取得重大技术突破，国家科技水平显著提升！`,
+                        technologyGain: 1,
+                        stabilityGain: 0.02
+                    };
+                }
+            },
+            {
+                name: '经济繁荣',
+                probability: 0.06,
+                effects: (nation) => {
+                    // 黄金增加
+                    const goldGain = Math.floor(Math.random() * 100) + 50;
+                    nation.resources.gold += goldGain;
+                    
+                    // 稳定度提升
+                    nation.stability += 0.03;
+                    
+                    return {
+                        message: `经济繁荣发展，国库收入增加${goldGain}黄金！`,
+                        goldGain: goldGain,
+                        stabilityGain: 0.03
+                    };
+                }
+            },
+            {
+                name: '丰收年',
+                probability: 0.08,
+                effects: (nation) => {
+                    // 食物大幅增加
+                    const foodGain = Math.floor(Math.random() * 100) + 50;
+                    nation.resources.food += foodGain;
+                    
+                    // 稳定度提升
+                    nation.stability += 0.04;
+                    
+                    return {
+                        message: `风调雨顺，农业大丰收，食物储备增加${foodGain}！`,
+                        foodGain: foodGain,
+                        stabilityGain: 0.04
+                    };
+                }
+            },
+            {
+                name: '民众起义',
+                probability: 0.03,
+                effects: (nation) => {
+                    // 稳定度大幅下降
+                    nation.stability -= 0.15;
+                    
+                    // 资源损失
+                    nation.resources.gold -= 50;
+                    
+                    return {
+                        message: `民众不满现状，爆发起义，政府花费大量资源镇压，社会动荡不安。`,
+                        stabilityLoss: 0.15,
+                        goldLoss: 50
+                    };
+                }
+            },
+            {
+                name: '外来移民',
+                probability: 0.07,
+                effects: (nation) => {
+                    // 人口增加
+                    const populationGain = Math.random() * 2 + 1;
+                    nation.population += populationGain;
+                    
+                    return {
+                        message: `大量移民涌入，人口增加${populationGain.toFixed(1)}百万！`,
+                        populationGain: populationGain
+                    };
+                }
+            },
+            {
+                name: '发现矿藏',
+                probability: 0.04,
+                effects: (nation) => {
+                    // 矿物资源大幅增加
+                    const mineralsGain = Math.floor(Math.random() * 100) + 50;
+                    nation.resources.minerals += mineralsGain;
+                    
+                    return {
+                        message: `国内发现大型矿藏，矿物资源增加${mineralsGain}！`,
+                        mineralsGain: mineralsGain
+                    };
+                }
+            },
+            {
+                name: '政治改革',
+                probability: 0.03,
+                effects: (nation) => {
+                    // 稳定度大幅提升
+                    nation.stability += 0.1;
+                    
+                    return {
+                        message: `政府推行成功的政治改革，民众满意度大幅提升，社会稳定繁荣。`,
+                        stabilityGain: 0.1
+                    };
+                }
+            }
+        ]
+    },
     // 外交系统
     diplomacy: {
         relationTypes: {
@@ -812,6 +1034,438 @@ function generateSimpleNoise(width, height) {
     return smoothNoise;
 }
 
+// 保存游戏
+function saveGame() {
+    try {
+        // 停止模拟
+        if (game.isSimulating) {
+            stopSimulation();
+        }
+        
+        // 准备保存数据
+        const saveData = {
+            timestamp: Date.now(),
+            date: new Date().toLocaleString(),
+            year: game.year,
+            nations: game.nations.map(nation => {
+                // 深拷贝国家对象
+                return JSON.parse(JSON.stringify(nation));
+            }),
+            diplomacy: JSON.parse(JSON.stringify(game.diplomacy)),
+            warfare: JSON.parse(JSON.stringify(game.warfare)),
+            trade: JSON.parse(JSON.stringify(game.trade)),
+            terrainGrid: JSON.parse(JSON.stringify(game.terrainGrid)),
+            notifications: JSON.parse(JSON.stringify(game.notifications))
+        };
+        
+        // 生成唯一ID
+        const saveId = Date.now().toString();
+        
+        // 保存到localStorage
+        localStorage.setItem(`nationalWar_save_${saveId}`, JSON.stringify(saveData));
+        
+        // 更新保存槽位列表
+        updateSaveSlots();
+        
+        // 显示成功消息
+        showNotification('游戏保存成功！', 'success');
+        
+        return saveId;
+    } catch (error) {
+        console.error('保存游戏失败:', error);
+        showNotification('保存游戏失败，请重试', 'error');
+        return null;
+    }
+}
+
+// 加载游戏
+function loadGame(saveId) {
+    try {
+        // 停止模拟
+        if (game.isSimulating) {
+            stopSimulation();
+        }
+        
+        // 从localStorage获取保存数据
+        const saveDataStr = localStorage.getItem(`nationalWar_save_${saveId}`);
+        if (!saveDataStr) {
+            showNotification('找不到保存文件', 'error');
+            return false;
+        }
+        
+        // 解析保存数据
+        const saveData = JSON.parse(saveDataStr);
+        
+        // 验证数据完整性
+        if (!validateSaveData(saveData)) {
+            showNotification('保存文件已损坏', 'error');
+            return false;
+        }
+        
+        // 恢复游戏状态
+        game.year = saveData.year;
+        game.terrainGrid = saveData.terrainGrid;
+        game.diplomacy = saveData.diplomacy;
+        game.warfare = saveData.warfare;
+        game.trade = saveData.trade;
+        game.notifications = saveData.notifications;
+        
+        // 恢复国家对象
+        game.nations = [];
+        for (const nationData of saveData.nations) {
+            // 创建新的国家实例
+            const nation = new Nation(
+                nationData.name,
+                nationData.color,
+                nationData.government,
+                nationData.economy,
+                nationData.population,
+                nationData.militaryStrength
+            );
+            
+            // 恢复其他属性
+            Object.assign(nation, nationData);
+            game.nations.push(nation);
+        }
+        
+        // 清除当前选中的国家
+        game.selectedNation = null;
+        
+        // 更新显示
+        updateWorldStats();
+        updateNationInfo(null);
+        render();
+        
+        // 更新当前保存槽位
+        game.currentSaveSlot = saveId;
+        
+        // 显示成功消息
+        showNotification(`游戏加载成功！当前年份: ${game.year}`, 'success');
+        
+        return true;
+    } catch (error) {
+        console.error('加载游戏失败:', error);
+        showNotification('加载游戏失败，请重试', 'error');
+        return false;
+    }
+}
+
+// 验证保存数据
+function validateSaveData(data) {
+    // 检查必要的字段是否存在
+    const requiredFields = ['year', 'nations', 'diplomacy', 'warfare', 'trade', 'terrainGrid'];
+    return requiredFields.every(field => data.hasOwnProperty(field));
+}
+
+// 更新保存槽位列表
+function updateSaveSlots() {
+    game.saveSlots = [];
+    
+    // 遍历localStorage查找保存文件
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('nationalWar_save_')) {
+            try {
+                const saveId = key.replace('nationalWar_save_', '');
+                const saveData = JSON.parse(localStorage.getItem(key));
+                game.saveSlots.push({
+                    id: saveId,
+                    date: saveData.date,
+                    year: saveData.year,
+                    nationCount: saveData.nations.length
+                });
+            } catch (error) {
+                console.warn('无效的保存文件:', key);
+            }
+        }
+    }
+    
+    // 按时间降序排序
+    game.saveSlots.sort((a, b) => b.id - a.id);
+}
+
+// 显示通知
+function showNotification(message, type = 'info') {
+    // 创建通知元素
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    // 添加到页面
+    document.body.appendChild(notification);
+    
+    // 设置样式
+    Object.assign(notification.style, {
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        padding: '15px 20px',
+        borderRadius: '5px',
+        color: 'white',
+        fontWeight: 'bold',
+        zIndex: '1000',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        transition: 'all 0.3s ease',
+        backgroundColor: type === 'success' ? '#2ecc71' : 
+                         type === 'error' ? '#e74c3c' : '#3498db'
+    });
+    
+    // 3秒后自动移除
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+// 创建保存/加载模态框
+function createSaveLoadModal() {
+    // 检查是否已存在
+    if (document.getElementById('save-load-modal')) {
+        return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.id = 'save-load-modal';
+    modal.className = 'modal';
+    
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-tabs">
+                <button id="save-tab" class="tab-btn active">保存游戏</button>
+                <button id="load-tab" class="tab-btn">加载游戏</button>
+            </div>
+            <div id="save-content" class="tab-content active">
+                <p>点击保存按钮即可保存当前游戏状态。</p>
+                <div class="save-info">
+                    <p><strong>当前年份:</strong> <span id="current-save-year">2023</span></p>
+                    <p><strong>国家数量:</strong> <span id="current-save-nations">0</span></p>
+                    <p><strong>保存时间:</strong> <span id="current-save-time">${new Date().toLocaleString()}</span></p>
+                </div>
+                <button id="confirm-save" class="btn-primary">保存</button>
+            </div>
+            <div id="load-content" class="tab-content">
+                <p>选择要加载的游戏存档:</p>
+                <div id="save-slots-list" class="save-slots-list">
+                    <!-- 保存槽位将在这里动态生成 -->
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // 设置样式
+    const style = document.createElement('style');
+    style.textContent = `
+        .modal-tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .tab-btn.active {
+            background: #3498db;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .save-info {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .save-slots-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .save-slot {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .save-slot-info {
+            flex: 1;
+        }
+        .save-slot-actions {
+            margin-left: 15px;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // 绑定事件
+    document.querySelector('#save-load-modal .close').addEventListener('click', hideSaveLoadModal);
+    
+    // 标签切换
+    document.getElementById('save-tab').addEventListener('click', () => {
+        switchTab('save');
+    });
+    
+    document.getElementById('load-tab').addEventListener('click', () => {
+        switchTab('load');
+        updateSaveSlotsList();
+    });
+    
+    // 保存按钮
+    document.getElementById('confirm-save').addEventListener('click', () => {
+        saveGame();
+        hideSaveLoadModal();
+    });
+    
+    // 点击模态框外部关闭
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            hideSaveLoadModal();
+        }
+    });
+}
+
+// 切换标签
+function switchTab(tabName) {
+    // 更新标签按钮
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+    
+    // 更新内容
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-content`).classList.add('active');
+    
+    // 如果是保存标签，更新保存信息
+    if (tabName === 'save') {
+        document.getElementById('current-save-year').textContent = game.year;
+        document.getElementById('current-save-nations').textContent = game.nations.length;
+        document.getElementById('current-save-time').textContent = new Date().toLocaleString();
+    }
+}
+
+// 更新保存槽位列表
+function updateSaveSlotsList() {
+    const listElement = document.getElementById('save-slots-list');
+    listElement.innerHTML = '';
+    
+    // 更新保存槽位
+    updateSaveSlots();
+    
+    if (game.saveSlots.length === 0) {
+        listElement.innerHTML = '<p class="no-saves">没有找到保存文件</p>';
+        return;
+    }
+    
+    // 创建保存槽位元素
+    for (const slot of game.saveSlots) {
+        const slotElement = document.createElement('div');
+        slotElement.className = 'save-slot';
+        
+        slotElement.innerHTML = `
+            <div class="save-slot-info">
+                <p><strong>年份:</strong> ${slot.year}</p>
+                <p><strong>国家数量:</strong> ${slot.nationCount}</p>
+                <p><small>保存时间: ${slot.date}</small></p>
+            </div>
+            <div class="save-slot-actions">
+                <button class="btn-primary load-btn" data-id="${slot.id}">加载</button>
+                <button class="btn-danger delete-btn" data-id="${slot.id}">删除</button>
+            </div>
+        `;
+        
+        listElement.appendChild(slotElement);
+    }
+    
+    // 绑定加载按钮事件
+    document.querySelectorAll('.load-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const saveId = btn.getAttribute('data-id');
+            if (confirm('确定要加载这个存档吗？当前未保存的进度将会丢失。')) {
+                if (loadGame(saveId)) {
+                    hideSaveLoadModal();
+                }
+            }
+        });
+    });
+    
+    // 绑定删除按钮事件
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const saveId = btn.getAttribute('data-id');
+            if (confirm('确定要删除这个存档吗？此操作无法撤销。')) {
+                deleteSave(saveId);
+                updateSaveSlotsList();
+            }
+        });
+    });
+}
+
+// 删除存档
+function deleteSave(saveId) {
+    try {
+        localStorage.removeItem(`nationalWar_save_${saveId}`);
+        showNotification('存档已删除', 'info');
+    } catch (error) {
+        console.error('删除存档失败:', error);
+        showNotification('删除存档失败', 'error');
+    }
+}
+
+// 显示保存/加载模态框
+function showSaveLoadModal() {
+    createSaveLoadModal();
+    document.getElementById('save-load-modal').style.display = 'block';
+    switchTab('save');
+}
+
+// 隐藏保存/加载模态框
+function hideSaveLoadModal() {
+    const modal = document.getElementById('save-load-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
 // 绑定事件
 function bindEvents() {
     // 地图拖动和缩放
@@ -837,6 +1491,12 @@ function bindEvents() {
     bindButton('edit-map', toggleEditMode);
     bindButton('simulate', startSimulation);
     bindButton('stop-simulation', stopSimulation);
+    bindButton('save-game', showSaveLoadModal);
+    bindButton('load-game', () => {
+        showSaveLoadModal();
+        switchTab('load');
+        updateSaveSlotsList();
+    });
     bindButton('zoom-in', () => zoomMap(1.2));
     bindButton('zoom-out', () => zoomMap(0.8));
     bindButton('diplomacy-overview', () => {
@@ -1208,6 +1868,12 @@ function updateWorldStats() {
                 case 'TRADE_CANCELED':
                     notificationClass = 'trade-notification';
                     break;
+                case 'NATURAL_DISASTER':
+                    notificationClass = 'disaster-notification';
+                    break;
+                case 'RANDOM_EVENT':
+                    notificationClass = 'event-notification';
+                    break;
             }
             
             notificationItem.className = notificationClass;
@@ -1256,6 +1922,101 @@ function stopSimulation() {
     clearInterval(game.simulationInterval);
 }
 
+// 模拟自然灾害
+function simulateNaturalDisasters() {
+    // 每个国家都有可能遭遇自然灾害
+    for (const nation of game.nations) {
+        // 跳过没有领土的国家
+        if (nation.territories.length === 0) continue;
+        
+        for (const disasterType of game.naturalDisasters.types) {
+            // 检查是否发生灾害
+            if (Math.random() < disasterType.probability) {
+                // 确定灾害严重程度 (1-2)
+                const severity = Math.random() > 0.7 ? 2 : 1;
+                
+                // 应用灾害效果
+                const result = disasterType.effects(nation, severity);
+                
+                // 限制数值范围
+                nation.population = Math.max(0.1, nation.population);
+                nation.stability = Math.max(0, Math.min(1, nation.stability));
+                for (const resource in nation.resources) {
+                    nation.resources[resource] = Math.max(0, nation.resources[resource]);
+                }
+                
+                // 添加通知
+                game.notifications.push({
+                    type: 'NATURAL_DISASTER',
+                    message: `${nation.name} ${result.message}`,
+                    year: game.year
+                });
+                
+                // 灾害具有连锁效应，可能引发其他灾害
+                if (severity === 2 && Math.random() < 0.3) {
+                    // 大地震可能引发火灾或洪水
+                    const secondaryDisaster = Math.random() > 0.5 ? 
+                        game.naturalDisasters.types.find(d => d.name === '火灾') : 
+                        game.naturalDisasters.types.find(d => d.name === '洪水');
+                    
+                    if (secondaryDisaster) {
+                        const secondaryResult = secondaryDisaster.effects(nation, 1);
+                        
+                        // 再次限制数值范围
+                        nation.population = Math.max(0.1, nation.population);
+                        nation.stability = Math.max(0, Math.min(1, nation.stability));
+                        for (const resource in nation.resources) {
+                            nation.resources[resource] = Math.max(0, nation.resources[resource]);
+                        }
+                        
+                        // 添加次生灾害通知
+                        game.notifications.push({
+                            type: 'NATURAL_DISASTER',
+                            message: `${nation.name} 次生灾害: ${secondaryResult.message}`,
+                            year: game.year
+                        });
+                    }
+                }
+                
+                break; // 一个国家每年最多发生一种主要灾害
+            }
+        }
+    }
+}
+
+// 模拟随机事件
+function simulateRandomEvents() {
+    // 每个国家都有可能发生随机事件
+    for (const nation of game.nations) {
+        // 跳过没有领土的国家
+        if (nation.territories.length === 0) continue;
+        
+        for (const eventType of game.randomEvents.types) {
+            // 检查是否发生事件
+            if (Math.random() < eventType.probability) {
+                // 应用事件效果
+                const result = eventType.effects(nation);
+                
+                // 限制数值范围
+                nation.population = Math.max(0.1, nation.population);
+                nation.stability = Math.max(0, Math.min(1, nation.stability));
+                for (const resource in nation.resources) {
+                    nation.resources[resource] = Math.max(0, nation.resources[resource]);
+                }
+                
+                // 添加通知
+                game.notifications.push({
+                    type: 'RANDOM_EVENT',
+                    message: `${nation.name} ${result.message}`,
+                    year: game.year
+                });
+                
+                break; // 一个国家每年最多发生一种随机事件
+            }
+        }
+    }
+}
+
 // 模拟一年
 function simulateYear() {
     // 增加年份
@@ -1268,6 +2029,12 @@ function simulateYear() {
     
     // 模拟国家间互动
     simulateInteractions();
+    
+    // 模拟自然灾害
+    simulateNaturalDisasters();
+    
+    // 模拟随机事件
+    simulateRandomEvents();
     
     // 更新全球市场价格
     updateGlobalMarket();
